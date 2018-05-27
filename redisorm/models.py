@@ -55,7 +55,7 @@ class Model(object):
         :param \*\*attrs: additional attributes of the instance. Will be pickled and
         written to the store
         """
-        tags = self.objects.attrs_to_tags(attrs)
+        tags = self.objects._attrs_to_tags(attrs)
         self.tags = tags or []
         self._saved_tags = self.tags
         id = attrs.pop('id', None)
@@ -82,23 +82,6 @@ class Model(object):
 
     def set_expire(self, expire):
         self.expire = expire_to_datetime(expire)
-
-    def save(self, system=None):
-        if hasattr(self, 'validate') and callable(self.validate):
-            self.validate()
-        self.objects.save_instance(self, system=system)
-
-    def delete(self, system=None):
-        self.objects.delete_instance(self, system=system)
-
-    def set(self, **kwargs):
-        self.attrs.update(**kwargs)
-        self.tags = self.objects.attrs_to_tags(self.attrs)
-
-    def unset(self, *args):
-        for arg in args:
-            self.attrs.pop(arg, None)
-        self.tags = self.objects.attrs_to_tags(self.attrs)
 
     def ttl(self):
         """

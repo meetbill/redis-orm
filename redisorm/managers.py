@@ -88,6 +88,7 @@ class ModelManager(object):
             self.expire()
         key = self._key('object:{0}', id)
         value = get_redis(system).get(key)
+        instance = 0
         if value:
             expire_key = self._key('object:{0}:expire', id)
             expire_value = get_redis(system).get(expire_key)
@@ -104,13 +105,16 @@ class ModelManager(object):
 
     def create(self, *args, **attrs):
         model = self.model(*args, **attrs)
-        model.save()
+        self._save_instance(model)
         return model
 
-    def save_instance(self, instance, system=None):
+    def _save_instance(self, instance, system=None):
+        """
+        write data to redis
+        """
         system = self.get_system(system)
         if instance.id is None:
-            instance.id = self.reserve_random_id(system=system)
+            instance.id = self._reserve_random_id(system=system)
 
         # object itself
         value = pickle.dumps(instance.attrs)
@@ -147,10 +151,10 @@ class ModelManager(object):
         for tag in tags:
             key = self._key('tags:{0}', u(tag))
             pipe.srem(key, instance.id)
-        self.delete_instance_by_id(instance.id, pipe=pipe, apply=False,system=system)
+        self._delete_instance_by_id(instance.id, pipe=pipe, apply=False,system=system)
         pipe.execute()
 
-    def delete_instance_by_id(self, instance_id, pipe=None, apply=True,
+    def _delete_instance_by_id(self, instance_id, pipe=None, apply=True,
                               system=None):
         system = self.get_system(system)
         instance_id = u(instance_id)
@@ -174,11 +178,11 @@ class ModelManager(object):
         if remove_ids:
             pipe = get_redis(system).pipeline()
             for id in remove_ids:
-               self.delete_instance_by_id(id, pipe=pipe, apply=False,
+               self._delete_instance_by_id(id, pipe=pipe, apply=False,
                                           system=system)
             pipe.execute()
 
-    def reserve_random_id(self, max_attempts=10, system=None):
+    def _reserve_random_id(self, max_attempts=10, system=None):
         system = self.get_system(system)
         key = self._key('__all__')
         for _ in xrange(max_attempts):
@@ -196,7 +200,10 @@ class ModelManager(object):
             ids = get_redis(system).smembers(all_key)
         return ModelResultSet(self, ids, system)
 
-    def attrs_to_tags(self, attrs):
+    def _attrs_to_tags(self, attrs):
+        """
+        get tags(list)
+        """
         tags = []
         for k, v in attrs.items():
             if k not in self.exclude_attrs:
@@ -214,7 +221,7 @@ class ModelManager(object):
 
     def find(self, **attrs):
         system = self.get_system(attrs.pop('system', None))
-        tags = self.attrs_to_tags(attrs)
+        tags = self._attrs_to_tags(attrs)
         ids = self.find_ids(system=system, *tags)
         return ModelResultSet(self, ids, system)
 
