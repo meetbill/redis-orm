@@ -10,6 +10,11 @@
 """
 import redisorm
 import time
+
+redisorm.setup_redis("default","127.0.0.1",6379)
+print redisorm.SYSTEMS
+
+
 class User(redisorm.Model):pass
 
 
