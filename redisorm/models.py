@@ -43,6 +43,7 @@ class Model(object):
     Base model class
     """
     objects = ModelManager(exclude_attrs=[])
+    unique_field = ""
     def __init__(self, **attrs):
         """
         Create a new model instance.
@@ -55,6 +56,11 @@ class Model(object):
         :param \*\*attrs: additional attributes of the instance. Will be pickled and
         written to the store
         """
+        if self.unique_field:
+            self.unique_tag = self.objects._gen_unitque_tag(attrs,self.unique_field)
+        else:
+            self.unique_tag = ""
+        print "XXXXXXXXXXXX[unique_tag]%s"%self.unique_tag
         tags = self.objects._attrs_to_tags(attrs)
         self.tags = tags or []
         self._saved_tags = self.tags
@@ -82,6 +88,9 @@ class Model(object):
 
     def set_expire(self, expire):
         self.expire = expire_to_datetime(expire)
+    
+    def set_unique(self, field_name = ""):
+        self.unique_field = field_name
 
     def ttl(self):
         """

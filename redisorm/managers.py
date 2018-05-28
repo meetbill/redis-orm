@@ -105,6 +105,20 @@ class ModelManager(object):
 
     def create(self, *args, **attrs):
         model = self.model(*args, **attrs)
+        # check unique_tag
+        if model.unique_tag:
+            keys = []
+            key = self._key('tags:{0}', model.unique_tag)
+            keys.append(u(key))
+            ids = get_redis("default").sinter(*keys)
+            if ids:
+                for instance_id in ids:
+                    instance = self.get(instance_id)
+                    if instance:
+                        self.delete_instance(instance)
+                print "found the key"
+            #else:
+            #    print "not found the key"
         self._save_instance(model)
         return model
 
@@ -200,6 +214,15 @@ class ModelManager(object):
             ids = get_redis(system).smembers(all_key)
         return ModelResultSet(self, ids, system)
 
+    def _gen_unitque_tag(self, attrs,unique_field):
+        """
+        get tags(string)
+        """
+        unique_tag = ""
+        for k, v in attrs.items():
+            if k == unique_field:
+                unique_tag = u'{0}:{1}'.format(u(k), u(v))
+        return unique_tag
     def _attrs_to_tags(self, attrs):
         """
         get tags(list)
