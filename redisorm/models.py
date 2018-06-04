@@ -60,7 +60,7 @@ class Model(object):
             self.unique_tag = self.objects._gen_unitque_tag(attrs,self.unique_field)
         else:
             self.unique_tag = ""
-        print "XXXXXXXXXXXX[unique_tag]%s"%self.unique_tag
+        #print "XXXXXXXXXXXX[unique_tag]%s"%self.unique_tag
         tags = self.objects._attrs_to_tags(attrs)
         self.tags = tags or []
         self._saved_tags = self.tags

@@ -116,7 +116,7 @@ class ModelManager(object):
                     instance = self.get(instance_id)
                     if instance:
                         self.delete_instance(instance)
-                print "found the key"
+            #    print "found the key"
             #else:
             #    print "not found the key"
         self._save_instance(model)
