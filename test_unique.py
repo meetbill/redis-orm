@@ -13,20 +13,22 @@ import time
 
 redisorm.setup_redis("default","127.0.0.1",6379)
 print redisorm.SYSTEMS
-
-
+#
+#
 class User(redisorm.Model):
     unique_field = "name"
+    exclude_attrs = ["desc"]
     pass
 
 #User.set_unique("name")
 
 
 print "########################## create"
-print User.objects.create(name='wangbin', age=26)
-print User.objects.create(name='meetbill', age=26)
-print User.objects.create(name='meetbill_expire', age=26,expire=3)
-print User.objects.create(name='meetbill', age=25)
+print User.objects.create(name='wangbin', age=26,desc="wangbin_desc")
+print User.objects.create(name='meetbill', age=26,desc="meetbill_desc")
+print User.objects.create(name='meetbill_expire1', age=26,expire=3,desc="meetbill_expire_desc1")
+print User.objects.create(name='meetbill_expire2', age=26,expire=3,desc="meetbill_expire_desc2")
+print User.objects.create(name='meetbill', age=25,desc="meetbill")
 
 
 print "########################## find"
@@ -52,5 +54,7 @@ for info in User.objects.all().list():
 print "########################## delete_instance"
 for info  in  User.objects.all().list():
     print "[id]%s [tags]%s \n"%(info.id,info.tags)
-    print User.objects.delete_instance(info)
+    User.objects.delete_instance(info)
+print "########################## delete_instance expire"
+User.objects.expire()
 

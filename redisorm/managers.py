@@ -48,8 +48,8 @@ def get_redis(system='default'):
 class ModelManager(object):
     # metaclass ModelBase ensures this object has "model_name", "id_length"
     # and "model" attribute,
-    def __init__(self, exclude_attrs=None):
-        self.exclude_attrs = set(exclude_attrs or [])
+    #def __init__(self):
+    #    self.exclude_attrs = set(exclude_attrs or [])
 
     def _key(self, key, *args, **kwargs):
         key = u(key)
@@ -84,12 +84,14 @@ class ModelManager(object):
     def get(self, id, system=None):
         system = self.get_system(system)
         id = u(id)
+        # There is a 1% chance to clean up expire data
         if random_true(0.01):
             self.expire()
         key = self._key('object:{0}', id)
         value = get_redis(system).get(key)
         instance = 0
         if value:
+            # check key expire
             expire_key = self._key('object:{0}:expire', id)
             expire_value = get_redis(system).get(expire_key)
             expire = timestamp_to_datetime(expire_value)
@@ -168,8 +170,7 @@ class ModelManager(object):
         self._delete_instance_by_id(instance.id, pipe=pipe, apply=False,system=system)
         pipe.execute()
 
-    def _delete_instance_by_id(self, instance_id, pipe=None, apply=True,
-                              system=None):
+    def _delete_instance_by_id(self, instance_id, pipe=None, apply=True,system=None):
         system = self.get_system(system)
         instance_id = u(instance_id)
         all_key = self._key('__all__')
@@ -192,8 +193,12 @@ class ModelManager(object):
         if remove_ids:
             pipe = get_redis(system).pipeline()
             for id in remove_ids:
-               self._delete_instance_by_id(id, pipe=pipe, apply=False,
-                                          system=system)
+                tags_keys = self._key('object:{0}:tags', u(id))
+                tags = get_redis(system).smembers(tags_keys)
+                for tag in tags:
+                    key = self._key('tags:{0}', u(tag))
+                    pipe.srem(key, id)
+                self._delete_instance_by_id(id, pipe=pipe, apply=False,system=system)
             pipe.execute()
 
     def _reserve_random_id(self, max_attempts=10, system=None):
@@ -223,13 +228,13 @@ class ModelManager(object):
             if k == unique_field:
                 unique_tag = u'{0}:{1}'.format(u(k), u(v))
         return unique_tag
-    def _attrs_to_tags(self, attrs):
+    def _attrs_to_tags(self, attrs,exclude_attrs_set = []):
         """
         get tags(list)
         """
         tags = []
         for k, v in attrs.items():
-            if k not in self.exclude_attrs:
+            if k not in exclude_attrs_set:
                 tags.append(u'{0}:{1}'.format(u(k), u(v)))
         return tags
     def find_ids(self, *tags, **kw):

@@ -42,7 +42,7 @@ class Model(object):
     """
     Base model class
     """
-    objects = ModelManager(exclude_attrs=[])
+    exclude_attrs = []
     unique_field = ""
     def __init__(self, **attrs):
         """
@@ -60,8 +60,8 @@ class Model(object):
             self.unique_tag = self.objects._gen_unitque_tag(attrs,self.unique_field)
         else:
             self.unique_tag = ""
-        #print "XXXXXXXXXXXX[unique_tag]%s"%self.unique_tag
-        tags = self.objects._attrs_to_tags(attrs)
+        exclude_attrs_set = set(self.exclude_attrs or [])
+        tags = self.objects._attrs_to_tags(attrs,exclude_attrs_set)
         self.tags = tags or []
         self._saved_tags = self.tags
         id = attrs.pop('id', None)
