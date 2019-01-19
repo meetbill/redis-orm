@@ -38,7 +38,7 @@ def to_underscore(name):
 
 
 
-class Model(object):
+class ModelRedis(object):
     """
     Base model class
     """
@@ -111,4 +111,4 @@ class Model(object):
             return 0
         return ttl
 
-Model = ModelBase('Model', (Model, ), {'objects': ModelManager()})
+Model = ModelBase('Model', (ModelRedis, ), {'objects': ModelManager()})
