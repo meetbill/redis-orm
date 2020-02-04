@@ -88,7 +88,7 @@ class ModelRedis(object):
 
     def set_expire(self, expire):
         self.expire = expire_to_datetime(expire)
-    
+
     def set_unique(self, field_name = ""):
         self.unique_field = field_name
 
@@ -112,3 +112,21 @@ class ModelRedis(object):
         return ttl
 
 Model = ModelBase('Model', (ModelRedis, ), {'objects': ModelManager()})
+"""
+ModelBase 是元类
+> (1) 元类是由“type”衍生而出
+> (2) 元类的操作都在 __new__ 中完成
+
+注意：通过元类创建的类（即 Model)，第一个参数是父类，第二个参数是 metaclass
+
+class 后声明“我是谁”
+小括号内声明“我来自哪里”
+中括号内声明“我要到哪里去”
+
+Model = ModelBase('Model', (ModelRedis, ), {'objects': ModelManager()})
+等同于：
+class Model(ModelRedis, metaclass=ModelBase){
+    objects = ModelManager()
+    ...
+}
+"""
