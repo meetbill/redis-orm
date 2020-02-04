@@ -135,7 +135,7 @@ class ModelManager(object):
         # object itself
         value = pickle.dumps(instance.attrs)
 
-        pipe = get_redis(system).pipeline()
+        pipe = get_redis(system).pipeline(transaction=False)
         pipe.sadd(self._key('__all__'), instance.id)
         pipe.set(self._key('object:{0}', instance.id), value)
         if instance.expire:
@@ -145,7 +145,7 @@ class ModelManager(object):
         pipe.execute()
         if not instance.tags:
             return
-        pipe = get_redis(system).pipeline()
+        pipe = get_redis(system).pipeline(transaction=False)
         tags_key = self._key('object:{0}:tags', instance.id)
         pipe.sadd(tags_key, *instance.tags)
         for tag in instance.tags:
@@ -163,7 +163,7 @@ class ModelManager(object):
         system = self.get_system(system)
         tags_keys = self._key('object:{0}:tags', u(instance.id))
         tags = get_redis(system).smembers(tags_keys)
-        pipe = get_redis(system).pipeline()
+        pipe = get_redis(system).pipeline(transaction=False)
         for tag in tags:
             key = self._key('tags:{0}', u(tag))
             pipe.srem(key, instance.id)
@@ -171,14 +171,24 @@ class ModelManager(object):
         pipe.execute()
 
     def _delete_instance_by_id(self, instance_id, pipe=None, apply=True,system=None):
+        """
+        Args:
+            instance_id:isinstance
+            pipe:pipeline
+            apply:
+            system: redis
+        Returns:
+        """
         system = self.get_system(system)
         instance_id = u(instance_id)
         all_key = self._key('__all__')
         expire_key = self._key('__expire__')
         key = self._key('object:{0}', instance_id)
+        # unknown command 'keys' for twemproxy
+        # todo
         extra_keys = get_redis(system).keys(self._key('object:{0}:*', instance_id))
         if not pipe:
-            pipe = get_redis(system).pipeline()
+            pipe = get_redis(system).pipeline(transaction=False)
         pipe.srem(all_key, instance_id)
         pipe.zrem(expire_key, instance_id)
         pipe.delete(key, *extra_keys)
@@ -191,7 +201,7 @@ class ModelManager(object):
         expire_key = self._key('__expire__')
         remove_ids = get_redis(system).zrangebyscore(expire_key, 0, expire_ts)
         if remove_ids:
-            pipe = get_redis(system).pipeline()
+            pipe = get_redis(system).pipeline(transaction=False)
             for id in remove_ids:
                 tags_keys = self._key('object:{0}:tags', u(id))
                 tags = get_redis(system).smembers(tags_keys)
