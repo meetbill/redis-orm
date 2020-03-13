@@ -5,7 +5,7 @@ import re
 from .managers import ModelManager
 from .utils import expire_to_datetime
 
-#--- Metaclass magic
+# --- Metaclass magic
 
 
 class ModelBase(type):
@@ -29,6 +29,7 @@ class ModelBase(type):
         model_manager.model = ret
         return ret
 
+
 def to_underscore(name):
     """
     Helper function converting CamelCase to underscore: camel_case
@@ -37,13 +38,13 @@ def to_underscore(name):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
-
 class ModelRedis(object):
     """
     Base model class
     """
     exclude_attrs = []
     unique_field = ""
+
     def __init__(self, **attrs):
         """
         Create a new model instance.
@@ -57,11 +58,11 @@ class ModelRedis(object):
         written to the store
         """
         if self.unique_field:
-            self.unique_tag = self.objects._gen_unitque_tag(attrs,self.unique_field)
+            self.unique_tag = self.objects._gen_unitque_tag(attrs, self.unique_field)
         else:
             self.unique_tag = ""
         exclude_attrs_set = set(self.exclude_attrs or [])
-        tags = self.objects._attrs_to_tags(attrs,exclude_attrs_set)
+        tags = self.objects._attrs_to_tags(attrs, exclude_attrs_set)
         self.tags = tags or []
         self._saved_tags = self.tags
         id = attrs.pop('id', None)
@@ -89,7 +90,7 @@ class ModelRedis(object):
     def set_expire(self, expire):
         self.expire = expire_to_datetime(expire)
 
-    def set_unique(self, field_name = ""):
+    def set_unique(self, field_name=""):
         self.unique_field = field_name
 
     def ttl(self):
@@ -105,11 +106,12 @@ class ModelRedis(object):
         if not self.expire:
             return None
         expire = calendar.timegm(self.expire.timetuple())
-        now =  int(time.time())
+        now = int(time.time())
         ttl = expire - now
         if ttl < 0:
             return 0
         return ttl
+
 
 Model = ModelBase('Model', (ModelRedis, ), {'objects': ModelManager()})
 """

@@ -6,11 +6,12 @@ from .utils import (timestamp_to_datetime, datetime_to_timestamp, random_string,
 from .compat import xrange, b, u
 
 
-#--- Systems related ----------------------------------------------
+# --- Systems related ----------------------------------------------
 
 SYSTEMS = {
     'default': redis.Redis(host='localhost', port=6379)
 }
+
 
 def setup_redis(name, host=None, port=None, **kw):
     """
@@ -48,7 +49,7 @@ def get_redis(system='default'):
 class ModelManager(object):
     # metaclass ModelBase ensures this object has "model_name", "id_length"
     # and "model" attribute,
-    #def __init__(self):
+    # def __init__(self):
     #    self.exclude_attrs = set(exclude_attrs or [])
 
     def _key(self, key, *args, **kwargs):
@@ -119,7 +120,7 @@ class ModelManager(object):
                     if instance:
                         self.delete_instance(instance)
             #    print "found the key"
-            #else:
+            # else:
             #    print "not found the key"
         self._save_instance(model)
         return model
@@ -140,8 +141,10 @@ class ModelManager(object):
         pipe.set(self._key('object:{0}', instance.id), value)
         if instance.expire:
             expire_ts = datetime_to_timestamp(instance.expire)
+            # python redis cli 3.0.x 后 zadd 需要使用 mapping = {member: score, }
+            mapping = {instance.id: expire_ts}
             pipe.set(self._key('object:{0}:expire', instance.id), expire_ts)
-            pipe.zadd(self._key('__expire__'), instance.id, expire_ts)
+            pipe.zadd(self._key('__expire__'), mapping)
         pipe.execute()
         if not instance.tags:
             return
@@ -167,10 +170,10 @@ class ModelManager(object):
         for tag in tags:
             key = self._key('tags:{0}', u(tag))
             pipe.srem(key, instance.id)
-        self._delete_instance_by_id(instance.id, pipe=pipe, apply=False,system=system)
+        self._delete_instance_by_id(instance.id, pipe=pipe, apply=False, system=system)
         pipe.execute()
 
-    def _delete_instance_by_id(self, instance_id, pipe=None, apply=True,system=None):
+    def _delete_instance_by_id(self, instance_id, pipe=None, apply=True, system=None):
         """
         Args:
             instance_id:isinstance
@@ -208,7 +211,7 @@ class ModelManager(object):
                 for tag in tags:
                     key = self._key('tags:{0}', u(tag))
                     pipe.srem(key, id)
-                self._delete_instance_by_id(id, pipe=pipe, apply=False,system=system)
+                self._delete_instance_by_id(id, pipe=pipe, apply=False, system=system)
             pipe.execute()
 
     def _reserve_random_id(self, max_attempts=10, system=None):
@@ -229,7 +232,7 @@ class ModelManager(object):
             ids = get_redis(system).smembers(all_key)
         return ModelResultSet(self, ids, system)
 
-    def _gen_unitque_tag(self, attrs,unique_field):
+    def _gen_unitque_tag(self, attrs, unique_field):
         """
         get tags(string)
         """
@@ -238,7 +241,8 @@ class ModelManager(object):
             if k == unique_field:
                 unique_tag = u'{0}:{1}'.format(u(k), u(v))
         return unique_tag
-    def _attrs_to_tags(self, attrs,exclude_attrs_set = []):
+
+    def _attrs_to_tags(self, attrs, exclude_attrs_set=[]):
         """
         get tags(list)
         """
@@ -247,6 +251,7 @@ class ModelManager(object):
             if k not in exclude_attrs_set:
                 tags.append(u'{0}:{1}'.format(u(k), u(v)))
         return tags
+
     def find_ids(self, *tags, **kw):
         system = self.get_system(kw.get('system'))
         if not tags:
@@ -262,6 +267,7 @@ class ModelManager(object):
         tags = self._attrs_to_tags(attrs)
         ids = self.find_ids(system=system, *tags)
         return ModelResultSet(self, ids, system)
+
 
 class ModelResultSet(object):
 
@@ -300,5 +306,3 @@ class ModelResultSet(object):
 
     def __getitem__(self, item):
         return self.list()[item]
-
-
