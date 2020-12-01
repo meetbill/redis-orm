@@ -75,12 +75,6 @@ class ModelManager(object):
         """
         return arg or self.system
 
-    def full_cleanup(self, system=None):
-        system = self.get_system(system)
-        key = self._key('*')
-        keys = get_redis(system).keys(key)
-        if keys:
-            get_redis(system).delete(*keys)
 
     def get(self, id, system=None):
         system = self.get_system(system)
@@ -107,6 +101,9 @@ class ModelManager(object):
         return instance
 
     def create(self, *args, **attrs):
+        """
+        create 记录
+        """
         model = self.model(*args, **attrs)
         # check unique_tag
         if model.unique_tag:
@@ -119,9 +116,6 @@ class ModelManager(object):
                     instance = self.get(instance_id)
                     if instance:
                         self.delete_instance(instance)
-            #    print "found the key"
-            # else:
-            #    print "not found the key"
         self._save_instance(model)
         return model
 
@@ -161,8 +155,10 @@ class ModelManager(object):
         instance._saved_tags = instance.tags
 
     def delete_instance(self, instance, system=None):
+        """
         # we have to remove instance from all tags before removing the
         # object itself
+        """
         system = self.get_system(system)
         tags_keys = self._key('object:{0}:tags', u(instance.id))
         tags = get_redis(system).smembers(tags_keys)
@@ -175,6 +171,14 @@ class ModelManager(object):
 
     def _delete_instance_by_id(self, instance_id, pipe=None, apply=True, system=None):
         """
+        删除记录级别的如下key:
+        > * (set) redisorm:{model_name}:object:{instance_id}
+        > * (set) redisorm:{model_name}:object:{instance_id}:tags
+        > * (string) redisorm:{model_name}:object:{instance_id}:expire 设置 instance 过期时才会有此 key
+
+        从 model 中删除此 instance_id
+        > * (set) redisorm:{model_name}:__all__
+        > * (zset) redisorm:{model_name}:__expire__
         Args:
             instance_id:isinstance
             pipe:pipeline
@@ -187,12 +191,20 @@ class ModelManager(object):
         all_key = self._key('__all__')
         expire_key = self._key('__expire__')
         key = self._key('object:{0}', instance_id)
-        # unknown command 'keys' for twemproxy
-        # todo
-        extra_keys = get_redis(system).keys(self._key('object:{0}:*', instance_id))
+        ###############################################################
+        # extra_keys
+        # tags key: 记录此 instance 的所有 tags
+        # (set) redisorm:{model_name}:object:{instance_id}:tags
+        # 过期时间 key: 记录此 instance 的过期时间，当设置过期时，才会设置此 key
+        # (string) redisorm:{model_name}:object:{instance_id}:expire
+        ###############################################################
+        extra_keys = [self._key('object:{0}:tags', instance_id), self._key('object:{0}:expire', instance_id) ]
         if not pipe:
             pipe = get_redis(system).pipeline(transaction=False)
+
+        # 从 redisorm:{model_name}:__all__ key 中删除此 instance_id
         pipe.srem(all_key, instance_id)
+        # 从 redisorm:{model_name}:__expire__ key 中删除此 instance_id
         pipe.zrem(expire_key, instance_id)
         pipe.delete(key, *extra_keys)
         if apply:
